@@ -1,0 +1,295 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Authentication ───────────────────────────────────────────────────────────
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ─── Users & Roles ────────────────────────────────────────────────────────────
+
+enum Role {
+  CLIENT
+  STYLIST
+  ADMIN
+}
+
+model User {
+  id              String    @id @default(cuid())
+  name            String?
+  email           String?   @unique
+  emailVerified   DateTime?
+  image           String?
+  phone           String?
+  password        String?
+  role            Role      @default(CLIENT)
+  loyaltyPoints   Int       @default(0)
+  totalVisits     Int       @default(0)
+  referralCode    String?   @unique
+  referredBy      String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  accounts        Account[]
+  sessions        Session[]
+  bookings        Booking[]
+  reviews         Review[]
+  payments        Payment[]
+  referrals       Referral[]    @relation("Referrer")
+  referredUsers   Referral[]    @relation("Referred")
+  stylistProfile  StylistProfile?
+  chatMessages    ChatMessage[]
+  notifications   Notification[]
+  promoUsages     PromoUsage[]
+}
+
+// ─── Stylist ──────────────────────────────────────────────────────────────────
+
+model StylistProfile {
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  bio           String?  @db.Text
+  specialties   String[]
+  experience    Int      @default(0)
+  rating        Float    @default(0)
+  reviewCount   Int      @default(0)
+  portfolio     String[]
+  available     Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  services      Service[]
+  bookings      Booking[]
+  availability  Availability[]
+}
+
+model Availability {
+  id          String   @id @default(cuid())
+  stylistId   String
+  dayOfWeek   Int      // 0=Sunday, 6=Saturday
+  startTime   String   // "09:00"
+  endTime     String   // "17:00"
+  isAvailable Boolean  @default(true)
+
+  stylist     StylistProfile @relation(fields: [stylistId], references: [id], onDelete: Cascade)
+}
+
+// ─── Services ─────────────────────────────────────────────────────────────────
+
+model Service {
+  id          String   @id @default(cuid())
+  name        String
+  description String?  @db.Text
+  price       Float
+  duration    Int      // in minutes
+  category    String
+  image       String?
+  featured    Boolean  @default(false)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  stylistId   String?
+  stylist     StylistProfile? @relation(fields: [stylistId], references: [id])
+  bookings    Booking[]
+}
+
+// ─── Bookings ─────────────────────────────────────────────────────────────────
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+model Booking {
+  id            String        @id @default(cuid())
+  userId        String
+  stylistId     String
+  serviceId     String
+  date          DateTime
+  startTime     String
+  endTime       String
+  status        BookingStatus @default(PENDING)
+  notes         String?       @db.Text
+  totalPrice    Float
+  discountApplied Float      @default(0)
+  reminderSent  Boolean       @default(false)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  user          User           @relation(fields: [userId], references: [id])
+  stylist       StylistProfile @relation(fields: [stylistId], references: [id])
+  service       Service        @relation(fields: [serviceId], references: [id])
+  payment       Payment?
+  review        Review?
+}
+
+// ─── Payments ─────────────────────────────────────────────────────────────────
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+model Payment {
+  id              String        @id @default(cuid())
+  userId          String
+  bookingId       String        @unique
+  amount          Float
+  currency        String        @default("ZAR")
+  status          PaymentStatus @default(PENDING)
+  stripePaymentId String?
+  method          String?
+  createdAt       DateTime      @default(now())
+
+  user            User    @relation(fields: [userId], references: [id])
+  booking         Booking @relation(fields: [bookingId], references: [id])
+}
+
+// ─── Reviews ──────────────────────────────────────────────────────────────────
+
+model Review {
+  id        String   @id @default(cuid())
+  userId    String
+  bookingId String   @unique
+  rating    Int
+  comment   String?  @db.Text
+  images    String[]
+  createdAt DateTime @default(now())
+
+  user      User    @relation(fields: [userId], references: [id])
+  booking   Booking @relation(fields: [bookingId], references: [id])
+}
+
+// ─── Loyalty & Promos ─────────────────────────────────────────────────────────
+
+model LoyaltyConfig {
+  id                  String  @id @default(cuid())
+  pointsPerVisit      Int     @default(10)
+  pointsPerDollar     Int     @default(1)
+  redeemThreshold     Int     @default(100)
+  discountPerRedeem   Float   @default(10.0)
+  referralBonus       Int     @default(50)
+  welcomeBonus        Int     @default(25)
+  isActive            Boolean @default(true)
+}
+
+model PromoCode {
+  id            String   @id @default(cuid())
+  code          String   @unique
+  description   String?
+  discountType  String   // "percentage" or "fixed"
+  discountValue Float
+  maxUses       Int?
+  usedCount     Int      @default(0)
+  minSpend      Float?
+  validFrom     DateTime
+  validUntil    DateTime
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+
+  usages        PromoUsage[]
+}
+
+model PromoUsage {
+  id        String   @id @default(cuid())
+  userId    String
+  promoId   String
+  usedAt    DateTime @default(now())
+
+  user      User      @relation(fields: [userId], references: [id])
+  promo     PromoCode @relation(fields: [promoId], references: [id])
+}
+
+model Referral {
+  id          String   @id @default(cuid())
+  referrerId  String
+  referredId  String
+  bonusAwarded Boolean @default(false)
+  createdAt   DateTime @default(now())
+
+  referrer    User @relation("Referrer", fields: [referrerId], references: [id])
+  referred    User @relation("Referred", fields: [referredId], references: [id])
+}
+
+// ─── AI Gallery ───────────────────────────────────────────────────────────────
+
+model GalleryImage {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  imageUrl    String
+  category    String
+  tags        String[]
+  aiGenerated Boolean  @default(false)
+  featured    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+}
+
+// ─── Chat & Notifications ─────────────────────────────────────────────────────
+
+model ChatMessage {
+  id        String   @id @default(cuid())
+  userId    String
+  role      String   // "user" or "assistant"
+  content   String   @db.Text
+  createdAt DateTime @default(now())
+
+  user      User @relation(fields: [userId], references: [id])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String
+  message   String   @db.Text
+  type      String   // "reminder", "promo", "booking", "loyalty"
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user      User @relation(fields: [userId], references: [id])
+}

@@ -1,0 +1,102 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --gold-primary: #D4A017;
+    --melanin-dark: #1A0E09;
+    --cream-light: #FFFDF7;
+  }
+
+  body {
+    background: linear-gradient(180deg, #080507 0%, #0F0A0D 50%, #1A0E09 100%);
+    min-height: 100vh;
+  }
+
+  ::selection {
+    background-color: rgba(212, 160, 23, 0.3);
+    color: #FFFDF7;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: #0F0A0D;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #4A2C17;
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #D4A017;
+  }
+}
+
+@layer components {
+  .btn-gold {
+    @apply bg-gradient-to-r from-gold-600 via-gold-500 to-gold-400 
+           text-deep-900 font-semibold px-6 py-3 rounded-full 
+           shadow-gold hover:shadow-gold-lg transition-all duration-300 
+           hover:scale-105 active:scale-95;
+  }
+
+  .btn-outline-gold {
+    @apply border-2 border-gold-500 text-gold-400 px-6 py-3 rounded-full 
+           hover:bg-gold-500 hover:text-deep-900 transition-all duration-300 
+           hover:shadow-gold;
+  }
+
+  .card-luxury {
+    @apply bg-gradient-to-br from-melanin-800/80 to-melanin-900/90 
+           backdrop-blur-sm border border-gold-700/20 rounded-2xl 
+           shadow-luxury hover:border-gold-500/40 transition-all duration-300;
+  }
+
+  .text-gradient-gold {
+    @apply bg-gradient-to-r from-gold-300 via-gold-500 to-gold-300 
+           bg-clip-text text-transparent;
+  }
+
+  .glass-panel {
+    @apply bg-melanin-900/60 backdrop-blur-md border border-gold-700/10 
+           rounded-xl;
+  }
+
+  .input-luxury {
+    @apply w-full bg-melanin-800/50 border border-gold-700/30 rounded-lg 
+           px-4 py-3 text-cream-50 placeholder-melanin-300/50 
+           focus:border-gold-500 focus:ring-1 focus:ring-gold-500/50 
+           transition-all duration-200 outline-none;
+  }
+
+  .section-divider {
+    @apply w-full h-px bg-gradient-to-r from-transparent via-gold-500/30 to-transparent;
+  }
+}
+
+@layer utilities {
+  .animate-shimmer {
+    animation: shimmer 2s linear infinite;
+    background-size: 200% 100%;
+  }
+
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+  }
+}

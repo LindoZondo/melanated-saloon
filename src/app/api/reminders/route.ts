@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { addHours, isWithinInterval } from "date-fns";
+import { addHours } from "date-fns";
 
 // This endpoint is called by a cron job to send appointment reminders
 // Sends reminders 24 hours before the appointment
